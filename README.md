@@ -1,7 +1,26 @@
 # FakeStore API – Cloud ETL Data Pipeline
 
-## Project Overview
-This project is an end-to-end cloud-based ETL pipeline that extracts product data from the FakeStore API, transforms the raw JSON into structured CSV, and loads it into Google BigQuery for analytics.
+
+## Project Workflow
+
+This project implements a cloud-based ETL (Extract, Transform, Load) pipeline using Google Cloud Platform.
+
+### 1. Extract
+An HTTP-triggered Cloud Function calls the FakeStore public API and fetches real-time product data in JSON format.  
+The raw data is stored in Google Cloud Storage under the `raw/` folder.
+
+### 2. Transform
+A second Cloud Function reads the raw JSON file from Cloud Storage, cleans the data, and converts it into a structured CSV format.  
+Only required fields such as `id`, `title`, and `price` are retained.  
+The transformed data is saved in the `transformed/` folder.
+
+### 3. Load
+Apache Airflow (Cloud Composer) is used to orchestrate the pipeline.  
+A DAG automatically loads the transformed CSV file from Cloud Storage into Google BigQuery, making the data ready for querying and analytics.
+
+### 4. Automation
+The complete pipeline can be triggered manually or executed as an automated workflow using Airflow.
+
 
 ## Technologies Used
 - Python
