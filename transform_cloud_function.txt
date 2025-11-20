@@ -1,0 +1,50 @@
+##mian.py
+
+
+import json
+import csv
+import io
+from google.cloud import storage
+
+BUCKET_NAME = "practice-01"
+SOURCE_FILE = "raw/data.json"
+DEST_FILE = "transformed/data.csv"
+
+def main(request):
+    """
+    HTTP Cloud Function.
+    Reads raw JSON from GCS, converts it to CSV, and writes back to GCS.
+    """
+    client = storage.Client()
+    bucket = client.bucket(BUCKET_NAME)
+
+    # 1) Download JSON
+    json_blob = bucket.blob(SOURCE_FILE)
+    raw_text = json_blob.download_as_text()
+    data = json.loads(raw_text)
+
+    # 2) Write CSV in memory
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=["id", "title", "price"])
+    writer.writeheader()
+
+    for item in data:
+        writer.writerow({
+            "id": item.get("id"),
+            "title": item.get("title"),
+            "price": item.get("price"),
+        })
+
+    # 3) Upload CSV to GCS
+    csv_blob = bucket.blob(DEST_FILE)
+    csv_blob.upload_from_string(
+        output.getvalue(),
+        content_type="text/csv"
+    )
+
+    return "Transformation complete!"
+
+
+#requirements.txt
+
+google-cloud-storage

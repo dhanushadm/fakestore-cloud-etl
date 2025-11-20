@@ -1,0 +1,38 @@
+# main.py 
+
+import json
+import requests
+from google.cloud import storage
+
+BUCKET_NAME = "practice-01"
+DEST_FILE = "raw/data.json"
+
+def main(request):
+    """
+    HTTP Cloud Function.
+    Extracts product data from FakeStore API and stores it as JSON in GCS.
+    """
+    url = "https://fakestoreapi.com/products"
+
+    # 1) Call API
+    resp = requests.get(url, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+
+    # 2) Upload JSON to GCS
+    client = storage.Client()
+    bucket = client.bucket(BUCKET_NAME)
+    blob = bucket.blob(DEST_FILE)
+
+    blob.upload_from_string(
+        json.dumps(data, indent=2),
+        content_type="application/json"
+    )
+
+    return f"Extract complete! Saved to gs://{BUCKET_NAME}/{DEST_FILE}"
+
+#requirements.txt
+
+requests
+google-cloud-storage
+

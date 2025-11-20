@@ -1,0 +1,47 @@
+from airflow import DAG
+from airflow.utils.dates import days_ago
+
+from airflow.providers.http.operators.http import SimpleHttpOperator
+from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
+
+
+with DAG(
+    dag_id="etl_full_pipeline",
+    start_date=days_ago(1),
+    schedule_interval=None,   # manual trigger only
+    catchup=False,
+) as dag:
+
+    # 1) EXTRACT: call extract_function (Cloud Function)
+    extract_task = SimpleHttpOperator(
+        task_id="extract_from_api",
+        http_conn_id="http_default",      # we’ll give full URL, connection is not very important
+        endpoint="https://us-central1-probable-analog-477614-m5.cloudfunctions.net/extract_function", # <--- paste EXTRACT_URL here
+        method="GET",
+    )
+
+    # 2) TRANSFORM: call transform_function (Cloud Function)
+    transform_task = SimpleHttpOperator(
+        task_id="transform_json_to_csv",
+        http_conn_id="http_default",
+        endpoint="https://us-central1-probable-analog-477614-m5.cloudfunctions.net/transform_function",  # <--- paste TRANSFORM_URL here
+        method="GET",
+    )
+
+    # 3) LOAD: GCS → BigQuery (this is your existing operator)
+    load_csv_to_bq = GCSToBigQueryOperator(
+        task_id="load_csv_to_bq",
+        bucket="practice-01",
+        source_objects=["transformed/data.csv"],
+        destination_project_dataset_table=(
+            "probable-analog-477614-m5.etl_dataset.products"
+        ),
+        source_format="CSV",
+        skip_leading_rows=1,
+        autodetect=True,
+        write_disposition="WRITE_TRUNCATE",
+        gcp_conn_id="google_cloud_default",
+    )
+
+    # Order: Extract → Transform → Load
+    extract_task >> transform_task >> load_csv_to_bq
